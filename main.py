@@ -1,23 +1,11 @@
 import requests
 from bs4 import BeautifulSoup
 from selenium import webdriver
+from selenium.common import NoSuchElementException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-
-
-def beautifulSoup():
-    response = requests.get(url)
-    html_content = response.text
-    soup = BeautifulSoup(html_content, 'html.parser')
-    selected_category = soup.find_all('span', string='Üçgen evler')
-    if selected_category:
-        for span in selected_category:
-            print("Span içeriği:", span.text)
-    else:
-        print("Span etiketi bulunamadı.")
-
 
 def select_category(driver, selected_category):
     div_for_label = driver.find_element(By.XPATH, "//div[@id='categoryScroller']")
@@ -30,8 +18,9 @@ def select_category(driver, selected_category):
             if category == selected_category:
                 print(f"Kategori bulundu: {selected_category}")
                 while True:
-                    category_button = WebDriverWait(driver,100).until(
-                        EC.visibility_of_element_located((By.XPATH, "//div[@id='categoryScroller']//span[contains(text(), '{}')]".format(category)))
+                    category_button = WebDriverWait(driver, 100).until(
+                        EC.visibility_of_element_located(
+                            (By.XPATH, "//div[@id='categoryScroller']//span[contains(text(), '{}')]".format(category)))
                     )
                     if category_button:
                         print("category button bulundu")
@@ -49,21 +38,30 @@ def select_category(driver, selected_category):
                         scroll_button.click()
                         print("Scroll butonuna tıklandı")
 
+def setNewUrl(driver):
+    a_tags = driver.find_elements(By.TAG_NAME, 'a')
+    a_elements = []
+    for a_tag in a_tags:
+        href_value = a_tag.get_attribute('href')
+        a_elements.append(href_value)
+    return a_elements[0]
 
 
-def select_place_in_site(driver):
-    dives = driver.find_elements(By.XPATH, "//div[@class=' dir dir-ltr']")
-    unique_links = set()  # Set oluştur
-
-    for div in dives:
-        a_elements = div.find_elements(By.TAG_NAME, "a")
-        for a_element in a_elements:
-            link = a_element.get_attribute("href")
-            unique_links.add(link)
-
-    # Set içindeki benzersiz linkleri yazdır
-    for link in unique_links:
-        print("a elementi:", link)
+def get_a_element(url):
+    driver.get(url)
+    dives = driver.find_elements(By.XPATH, "//div[@aria-live='polite']")
+    if dives:
+        unique_links = set()  # Set oluştur
+        for div in dives:
+            a_tags = div.find_elements(By.TAG_NAME, 'a')
+            if a_tags:
+                print("a element bulundu")
+                for a_tag in a_tags:
+                    href_value = a_tag.get_attribute('href')
+                    if href_value:
+                        print(href_value)
+            else:
+                print("a elementi bulunamadı.")
 
 
 if __name__ == '__main__':
@@ -75,18 +73,9 @@ if __name__ == '__main__':
     driver = webdriver.Chrome(options=options)
     driver.get(url)
     category = "Üçgen evler"
-    select_category(driver=driver, selected_category=category) #tamamıyla ayarlandı!
-    select_place_in_site(driver=driver) #test edilecek bu
+    select_category(driver=driver, selected_category=category)  # tamamıyla ayarlandı!
+    new_url = setNewUrl(driver=driver)
+    get_a_element(url=new_url) #a etiketini buluyor bazen bulamayabiliyor!
 
-# suanda işte categorilerden category seçebiliyorum ve tıklayabiliyorum ona.
-# şimdi de model olarak verileri göstertip onları çekmem gerkeiyor!
-# knk şimdi şöyle birşey var ben burdan yorumlara vs ulaşamıyorum yani burdan a etketine tıklatmalıyım ve ordan diğer sayfaya gitmem
-# gerekiyor ki ordan verileri alabileyim!!!
-# bunu nasıl yaparım ????
 
-"""
-knk burda şu şekilde bi durum söz konusu: burda birçok ilan var ve ben bunları elimle aşşagıya dogru kaydırdıgım her vakitte daha fazlası
-çıkıyor ortaya tüm verileri alabilmek için sürekli olarak otomatik olarak aşşağıya kaydırılması ve o şekilde divleri alabilmem gerkeiyor!
-
-şimdi modelin geldigi o divi bulucam
-"""
+#a etiketini buluyorum. onu alıp içine girmek var şimdi!!!!
