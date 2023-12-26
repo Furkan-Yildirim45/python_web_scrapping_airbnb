@@ -38,13 +38,9 @@ def select_category(driver, selected_category):
                         scroll_button.click()
                         print("Scroll butonuna tıklandı")
 
-def setNewUrl(driver):
-    a_tags = driver.find_elements(By.TAG_NAME, 'a')
-    a_elements = []
-    for a_tag in a_tags:
-        href_value = a_tag.get_attribute('href')
-        a_elements.append(href_value)
-    return a_elements[0]
+def get_current_url(driver):
+    print(driver.current_url)
+    return driver.current_url
 
 
 def get_a_element(url):
@@ -59,7 +55,11 @@ def get_a_element(url):
                 for a_tag in a_tags:
                     href_value = a_tag.get_attribute('href')
                     if href_value:
-                        print(href_value)
+                        unique_links.add(href_value)
+                print("linkler eklendi\n")
+                for link in unique_links:
+                    print("set linki")
+                    print("---{}".format(link))
             else:
                 print("a elementi bulunamadı.")
 
@@ -74,8 +74,10 @@ if __name__ == '__main__':
     driver.get(url)
     category = "Üçgen evler"
     select_category(driver=driver, selected_category=category)  # tamamıyla ayarlandı!
-    new_url = setNewUrl(driver=driver)
-    get_a_element(url=new_url) #a etiketini buluyor bazen bulamayabiliyor!
+    #new_url = setNewUrl(driver=driver)
+    #get_a_element(url=new_url) #a etiketini buluyor bazen bulamayabiliyor!
+    current_url = get_current_url(driver=driver)
+    get_a_element(url=current_url)
 
 
 #a etiketini buluyorum. onu alıp içine girmek var şimdi!!!!
