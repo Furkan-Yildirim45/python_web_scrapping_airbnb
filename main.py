@@ -7,6 +7,62 @@ from model.product_model import Product_Model
 import re
 
 
+def get_comment_info(driver):
+    element = WebDriverWait(driver, 10).until(
+        EC.visibility_of_element_located(
+            (By.XPATH, "//div[@data-testid='pdp-reviews-modal-scrollable-panel']")
+        )
+    )
+    if element:
+        dives = element.find_elements(By.XPATH, "//div[@class='r1are2x1 atm_gq_1vi7ecw dir dir-ltr']")
+        if dives:
+            for div in dives:
+                # h3 isim
+                h3_tags = div.find_elements(By.TAG_NAME, 'h3')
+                if h3_tags:
+                    for h3_tag in h3_tags:
+                        print("Başlık:", h3_tag.text)
+
+                # span yıldız
+                span_div = div.find_element(By.XPATH,
+                                            "//div[@class='c5dn5hn atm_9s_1txwivl atm_cx_t94yts dir dir-ltr']")
+                if span_div:
+                    span_star_point = span_div.find_elements(By.TAG_NAME, "span")
+                    if span_star_point:
+                        for span in span_star_point:
+                            print("Yıldız Sayısı:", span.get_attribute("textContent"))
+
+                # span yorum
+                comment_text = div.find_element(By.XPATH,
+                                                ".//span[@class='ll4r2nl atm_kd_pg2kvz_1bqn0at dir dir-ltr']").text
+                print("Yorum:", comment_text)
+
+
+def get_comments(driver):
+    element = WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located(
+            (By.XPATH, "//div[@class='_16e70jgn']//div[@data-section-id='GUEST_FAVORITE_BANNER']")
+        )
+    )
+    if element:
+        a_tags = WebDriverWait(element, 10).until(
+            EC.visibility_of_all_elements_located(
+                (By.TAG_NAME, "a")
+            )
+        )
+        if a_tags:
+            for a_tag in a_tags:
+                print("Href:", a_tag.get_attribute('href'))
+                comment_url = a_tag.get_attribute("href")
+                driver.get(comment_url)
+                get_comment_info(driver)
+
+        else:
+            print("a etiketi bulunamadı.")
+    else:
+        print("Div bulunamadı.")
+
+
 def select_category(driver, selected_category):
     div_for_label = driver.find_element(By.XPATH, "//div[@id='categoryScroller']")
     wait = WebDriverWait(driver, 10)
@@ -41,19 +97,26 @@ def select_category(driver, selected_category):
                         print("Scroll butonuna tıklandı")
 
 
-def get_a_element(driver):
+def get_url_and_location(driver):
     driver.implicitly_wait(0.05)
     unique_urls = set()
+    unique_locations = set()
     divs = driver.find_elements(By.XPATH, "//div[@aria-live='polite']//div[@class=' dir dir-ltr']")
     if divs:
         for div in divs:
             a_tags = div.find_elements(By.TAG_NAME, 'a')
             if a_tags:
                 for a_tag in a_tags:
-                    #print(a_tag.get_attribute('href'))
+                    # print(a_tag.get_attribute('href'))
                     unique_urls.add(a_tag.get_attribute("href"))
-        return unique_urls
+            locations = div.find_elements(By.XPATH, ".//div[@data-testid='listing-card-title']")
+            if locations:
+                for location in locations:
+                    # print(location.get_attribute("textContent"))
+                    unique_locations.add(location.get_attribute("textContent"))
+        return unique_urls, unique_locations
     return None
+
 
 def get_product_price(driver):
     element = WebDriverWait(driver, 10).until(
@@ -68,7 +131,8 @@ def get_product_price(driver):
         print(combined_text)
         return combined_text
 
-def open_product_url(product_urls, product_category):
+
+def open_product_url(product_urls, product_category, product_locations):
     if product_urls != None:
         print("urls none degil")
         for product_url in product_urls:
@@ -76,14 +140,15 @@ def open_product_url(product_urls, product_category):
             print("-----------------------------------------")
             print(product_url)
 
-            #ürün ismi ve konum alma
+            # ürün ismi ve konum alma
             print(driver.title)
             # Fiyatın yüklenmesini bekleyin
             get_product_price(driver=driver)
-            #konum bilgisi alınıcak!!!
+
+            # yorumlar
+            get_comments(driver)
 
             # model = Product_Model(product_title=title,product_location=location,product_url=product_url,product_category=product_category,)
-
 
 
 if __name__ == '__main__':
@@ -96,8 +161,8 @@ if __name__ == '__main__':
     driver = webdriver.Chrome(options=options)
     driver.get(url_ucgen_evler)
     category = "Üçgen evler"
-    #get_a_element(driver=driver)
-    open_product_url(product_urls=get_a_element(driver), product_category=category)
+    urls, locations = get_url_and_location(driver)
+    open_product_url(product_urls=urls, product_category=category, product_locations=locations)
 
 # todo: knk burda selected category i kapatıyorum eger o tıklamada url i yeniden alabilirsem açarım!
 # todo: knk bazı divleri bulamıyor! ki a elementlerini bulamıyor!
