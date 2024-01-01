@@ -59,12 +59,11 @@ def get_comments(driver):
                 comment_url = a_tag.get_attribute("href")
                 driver.get(comment_url)
                 get_comment_info(driver)
-                #todo: burda değerlendirme yok kısmını da ele alıcaktım ona göre işleme devam edicem!
-
         else:
             print("a etiketi bulunamadı.")
     else:
-        print("Div bulunamadı.")
+        print("Henüz değerlendirme mevcut değil.")
+        #burda yorumları boş göndericeksin!
 
 
 get_comments(driver)

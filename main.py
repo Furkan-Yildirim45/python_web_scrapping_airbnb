@@ -3,12 +3,14 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+
+from model.comment_model import Comment_Model
 from model.product_model import Product_Model
 import re
 
 
 def get_comment_info(driver):
-    element = WebDriverWait(driver, 10).until(
+    element = WebDriverWait(driver, 20).until(
         EC.visibility_of_element_located(
             (By.XPATH, "//div[@data-testid='pdp-reviews-modal-scrollable-panel']")
         )
@@ -16,13 +18,16 @@ def get_comment_info(driver):
     if element:
         dives = element.find_elements(By.XPATH, "//div[@class='r1are2x1 atm_gq_1vi7ecw dir dir-ltr']")
         if dives:
+            comment_list = []
+            name = ""
+            star_point = ""
             for div in dives:
                 # h3 isim
                 h3_tags = div.find_elements(By.TAG_NAME, 'h3')
                 if h3_tags:
                     for h3_tag in h3_tags:
-                        print("Başlık:", h3_tag.text)
-
+                        print("Name:", h3_tag.text)
+                        name = h3_tag.text
                 # span yıldız
                 span_div = div.find_element(By.XPATH,
                                             "//div[@class='c5dn5hn atm_9s_1txwivl atm_cx_t94yts dir dir-ltr']")
@@ -31,36 +36,45 @@ def get_comment_info(driver):
                     if span_star_point:
                         for span in span_star_point:
                             print("Yıldız Sayısı:", span.get_attribute("textContent"))
+                            star_point = span.get_attribute("textContent")
 
                 # span yorum
                 comment_text = div.find_element(By.XPATH,
                                                 ".//span[@class='ll4r2nl atm_kd_pg2kvz_1bqn0at dir dir-ltr']").text
                 print("Yorum:", comment_text)
+                comment_list.append(Comment_Model(comment_point=star_point, comment=comment_text, name=name))
+            return comment_list
+    return None
 
 
 def get_comments(driver):
-    element = WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located(
-            (By.XPATH, "//div[@class='_16e70jgn']//div[@data-section-id='GUEST_FAVORITE_BANNER']")
-        )
-    )
-    if element:
-        a_tags = WebDriverWait(element, 10).until(
-            EC.visibility_of_all_elements_located(
-                (By.TAG_NAME, "a")
+    try:
+        element = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located(
+                (By.XPATH, "//div[@class='_16e70jgn']//div[@data-section-id='GUEST_FAVORITE_BANNER']")
             )
         )
-        if a_tags:
-            for a_tag in a_tags:
-                print("Href:", a_tag.get_attribute('href'))
-                comment_url = a_tag.get_attribute("href")
-                driver.get(comment_url)
-                get_comment_info(driver)
 
+        if element:
+            a_tags = WebDriverWait(element, 10).until(
+                EC.visibility_of_all_elements_located(
+                    (By.TAG_NAME, "a")
+                )
+            )
+
+            if a_tags:
+                for a_tag in a_tags:
+                    print("Href:", a_tag.get_attribute('href'))
+                    comment_url = a_tag.get_attribute("href")
+                    driver.get(comment_url)
+                    return get_comment_info(driver)
+            else:
+                print("a etiketi bulunamadı.")
         else:
-            print("a etiketi bulunamadı.")
-    else:
-        print("Div bulunamadı.")
+            print("Henüz değerlendirme mevcut değil.")
+    except Exception as e:
+        print("Henüz değerlendirme mevcut değil.")
+    return None
 
 
 def select_category(driver, selected_category):
@@ -119,7 +133,7 @@ def get_url_and_location(driver):
 
 
 def get_product_price(driver):
-    element = WebDriverWait(driver, 10).until(
+    element = WebDriverWait(driver, 20).until(
         EC.presence_of_element_located((By.XPATH,
                                         "//div[@dir='ltr']//div[@class='_1s21a6e2']//div["
                                         "@data-testid='book-it-default']//div[@class='_1jo4hgw']"))
@@ -146,7 +160,7 @@ def open_product_url(product_urls, product_category, product_locations):
             get_product_price(driver=driver)
 
             # yorumlar
-            get_comments(driver)
+            comment_list = get_comments(driver)  # none olabilir
 
             # model = Product_Model(product_title=title,product_location=location,product_url=product_url,product_category=product_category,)
 
@@ -166,3 +180,6 @@ if __name__ == '__main__':
 
 # todo: knk burda selected category i kapatıyorum eger o tıklamada url i yeniden alabilirsem açarım!
 # todo: knk bazı divleri bulamıyor! ki a elementlerini bulamıyor!
+
+
+#todo: eklemem gerekenlerde baba tüm ürünleri ve tüm yorumları almıyor en son buna bir bak!
