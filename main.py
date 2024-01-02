@@ -9,6 +9,53 @@ from model.product_model import Product_Model
 import re
 
 
+def get_star_rating(driver):
+    try:
+        element = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located(
+                (By.XPATH, "//div[@class='_16e70jgn']//div[@data-section-id='GUEST_FAVORITE_BANNER']")
+            )
+        )
+        if element:
+            span_element = WebDriverWait(element, 10).until(
+                EC.presence_of_element_located(
+                    (By.XPATH,
+                     "//div[@data-testid='pdp-reviews-highlight-banner-host-rating']")
+                )
+            )
+            if span_element:
+                span = span_element.find_element(By.TAG_NAME, "span")
+                if span:
+                    text = span_element.get_attribute("textContent")
+                    match = re.search(r"(\d,\d)", text)
+                    if match:
+                        star_rating = match.group(0)
+                        print("Star Rating:", star_rating)
+                    else:
+                        print(text)
+    except Exception as _:
+        try:
+            element = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located(
+                    (By.XPATH, "//div[@class='_16e70jgn']//div[@data-section-id='OVERVIEW_DEFAULT_V2']")
+                )
+            )
+            if element:
+                span_element = WebDriverWait(element, 10).until(
+                    EC.presence_of_element_located(
+                        (By.XPATH, "//div[contains(@class, 'rk4wssy')]")
+                    )
+                )
+                if span_element:
+                    span = span_element.find_element(By.TAG_NAME, "span")
+                    if span:
+                        text = span_element.get_attribute("textContent")
+                        print("Star Rating:", text)
+
+        except Exception as e:
+            print(e)
+
+
 def get_comment_info(driver):
     element = WebDriverWait(driver, 20).until(
         EC.visibility_of_element_located(
@@ -146,6 +193,12 @@ def get_product_price(driver):
         return combined_text
 
 
+def get_product_star_point(driver):
+    element = driver.find_element(By.XPATH, "//div[@class='_16e70jgn']")
+    if element:
+        print("element")
+
+
 def open_product_url(product_urls, product_category, product_locations):
     if product_urls != None:
         print("urls none degil")
@@ -162,6 +215,8 @@ def open_product_url(product_urls, product_category, product_locations):
             # yorumlar
             comment_list = get_comments(driver)  # none olabilir
 
+            # prduct star raiting
+            get_star_rating(driver)
             # model = Product_Model(product_title=title,product_location=location,product_url=product_url,product_category=product_category,)
 
 
@@ -182,4 +237,4 @@ if __name__ == '__main__':
 # todo: knk bazı divleri bulamıyor! ki a elementlerini bulamıyor!
 
 
-#todo: eklemem gerekenlerde baba tüm ürünleri ve tüm yorumları almıyor en son buna bir bak!
+# todo: eklemem gerekenlerde baba tüm ürünleri ve tüm yorumları almıyor en son buna bir bak!

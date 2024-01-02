@@ -7,6 +7,8 @@ class Product_Model:
         self.product_location = product_location
         self.product_comments = product_comments
         self.product_category = product_category
+        self.product_star_point = product_star_point
+
 
 
 #ev değerlendirme yıldız puanı!!
