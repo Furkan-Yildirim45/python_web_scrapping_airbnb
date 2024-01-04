@@ -202,11 +202,5 @@ def open_product_url(product_urls, product_category, driver):
             comment_list = get_comments(driver)
             star_rating = get_star_rating(driver)
             print(driver.title)
-            model = Product_Model(
-                product_url=product_url,
-                product_title=driver.title,
-                product_price=get_product_price(driver),
-                product_category=product_category,
-                product_comments=comment_list,
-                product_star_point=star_rating,
-            )
+
+        #todo:şimdi veritabanıyla birleştirme kaldı!

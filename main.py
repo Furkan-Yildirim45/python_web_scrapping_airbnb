@@ -17,8 +17,7 @@ if __name__ == '__main__':
     locations = list(locations)
     open_product_url(product_urls=urls, product_category=Project_Url.category,driver=driver)
 
-    #veri tabanına kaydetme!!
-    Sql_Service.add_file_and_connect("data_base.db")
-    
+
+
 
 
