@@ -38,6 +38,66 @@ class ProductService:
             product_list.append(product_instance)
         return product_list
 
+    def get_products_with_comments(self):
+        comment_service = CommentService()
+        product_ids_with_comments = comment_service.get_product_ids_with_comments()
+
+        products_with_comments = []
+        for product_id in product_ids_with_comments:
+            product = self.get_product(product_id)
+            products_with_comments.append(product)
+
+        return products_with_comments
+
+    def get_products_by_location(self, location):
+        self.cursor.execute(f"SELECT * FROM {self.table_name} WHERE product_title LIKE ?", ('%' + location + '%',))
+        products = self.cursor.fetchall()
+        product_list = []
+        for product in products:
+            product_instance = Product_Model(product[1], product[2], product[3], product[4], product[5])
+            product_instance.product_id = product[0]
+            product_list.append(product_instance)
+        return product_list
+
+    def get_products_by_price_range(self, min_price, max_price):
+        self.cursor.execute(
+            f"SELECT * FROM {self.table_name} WHERE CAST(SUBSTR(product_price, 1, INSTR(product_price, ' ') - 1) AS "
+            f"REAL) BETWEEN ? AND ?",
+            (min_price, max_price))
+        products = self.cursor.fetchall()
+        product_list = []
+        for product in products:
+            product_instance = Product_Model(product[1], product[2], product[3], product[4], product[5])
+            product_instance.product_id = product[0]
+            product_list.append(product_instance)
+        return product_list
+
+    def get_products_cheaper_than(self, price):
+        self.cursor.execute(
+            f"SELECT * FROM {self.table_name} WHERE CAST(SUBSTR(product_price, 1, INSTR(product_price, ' ') - 1) AS "
+            f"REAL) < ?",
+            (price,))
+        products = self.cursor.fetchall()
+        product_list = []
+        for product in products:
+            product_instance = Product_Model(product[1], product[2], product[3], product[4], product[5])
+            product_instance.product_id = product[0]
+            product_list.append(product_instance)
+        return product_list
+
+    def get_products_pricier_than(self, price):
+        self.cursor.execute(
+            f"SELECT * FROM {self.table_name} WHERE CAST(SUBSTR(product_price, 1, INSTR(product_price, ' ') - 1) AS "
+            f"REAL) > ?",
+            (price,))
+        products = self.cursor.fetchall()
+        product_list = []
+        for product in products:
+            product_instance = Product_Model(product[1], product[2], product[3], product[4], product[5])
+            product_instance.product_id = product[0]
+            product_list.append(product_instance)
+        return product_list
+
     def get_product(self, product_id):
         self.cursor.execute(f"SELECT * FROM {self.table_name} WHERE product_id = ?", (product_id,))
         product = self.cursor.fetchone()
@@ -68,6 +128,15 @@ class ProductService:
     def delete_product(self, product_id):
         self.cursor.execute(f"DELETE FROM {self.table_name} WHERE product_id = ?", (product_id,))
         self.conn.commit()
+
+    def delete_all_products(self):
+        confirmation = input("Tüm ürünleri silmek istediğinize emin misiniz? (E/H): ")
+        if confirmation.lower() == 'e':
+            self.cursor.execute(f"DELETE FROM {self.table_name}")
+            self.conn.commit()
+            print("Tüm ürünler başarıyla silindi.")
+        else:
+            print("İşlem iptal edildi.")
 
     def __del__(self):
         self.conn.close()
@@ -102,6 +171,12 @@ class CommentService:
         self.cursor.execute(f"SELECT * FROM {self.table_name} WHERE product_id = ?", (product_id,))
         comments = self.cursor.fetchall()
         return comments
+
+    def get_product_ids_with_comments(self):
+        self.cursor.execute(f"SELECT DISTINCT product_id FROM {self.table_name} WHERE comment_text != 'Henüz "
+                            f"değerlendirme mevcut değil.'")
+        product_ids = self.cursor.fetchall()
+        return [product_id[0] for product_id in product_ids]
 
     def add_comment_to_product(self, comment):
         self.cursor.execute(f"INSERT INTO {self.table_name} (product_id, name, comment_point, comment_text) VALUES (?, ?, ?, ?)",

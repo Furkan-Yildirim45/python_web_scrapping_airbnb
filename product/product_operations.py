@@ -6,6 +6,7 @@ from selenium.webdriver.support import expected_conditions as EC
 
 from model.comment_model import Comment_Model
 from model.product_model import Product_Model
+from service.sql_service import ProductService, CommentService
 
 
 def find_whole_product(driver):
@@ -195,12 +196,17 @@ def extract_text_from_spans(element):
 
 def open_product_url(product_urls, product_category, driver):
     if product_urls is not None:
+        product_service = ProductService()
+        comment_service = CommentService()
         print("urls none degil")
-        for product_url in product_urls:
+        for i,product_url in enumerate(product_urls):
             driver.get(product_url)
             print("-----------------------------------------")
             comment_list = get_comments(driver)
             star_rating = get_star_rating(driver)
             print(driver.title)
+            product_data = Product_Model(product_url=product_url,product_category=product_category,product_title=driver.title,product_price=get_product_price(driver),product_star_point=star_rating,)
+            product_service.add_product(product_data)
+            comment_service.add_comments_to_product(comment_list)
+            print("veri kaydedildi!")
 
-        #todo:şimdi veritabanıyla birleştirme kaldı!
