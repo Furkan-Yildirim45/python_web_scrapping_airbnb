@@ -38,6 +38,8 @@ def find_whole_product(driver):
                     break
 
             scroll_to_bottom(driver)
+
+
 def scroll_to_bottom(driver):
     driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
     time.sleep(3)
@@ -72,6 +74,8 @@ def get_star_rating(driver):
         except Exception as e:
             print(e)
             return None
+
+
 def extract_star_rating(element):
     span = element.find_element(By.TAG_NAME, "span")
     if span:
@@ -87,7 +91,7 @@ def extract_star_rating(element):
     return None
 
 
-def get_comment_info(driver):
+def get_comment_info(driver, product_id):
     element = WebDriverWait(driver, 20).until(
         EC.visibility_of_element_located(
             (By.XPATH, "//div[@data-testid='pdp-reviews-modal-scrollable-panel']")
@@ -97,13 +101,17 @@ def get_comment_info(driver):
         comment_list = []
         dives = element.find_elements(By.XPATH, "//div[@class='r1are2x1 atm_gq_1vi7ecw dir dir-ltr']")
         if dives:
-            for div in dives:
+            for i, div in enumerate(dives):
                 name = extract_name(div)
                 star_point = extract_star_point(div)
                 comment_text = extract_comment_text(div)
-                comment_list.append(Comment_Model(comment_point=star_point, comment=comment_text, name=name))
+                comment_list.append(
+                    Comment_Model(product_id=product_id, comment_point=star_point, comment_text=comment_text,
+                                  name=name, comment_id=i + 1))
         return comment_list
     return None
+
+
 def extract_name(div):
     h3_tags = div.find_elements(By.TAG_NAME, 'h3')
     if h3_tags:
@@ -111,6 +119,8 @@ def extract_name(div):
             print("Name:", h3_tag.text)
             return h3_tag.text
     return ""
+
+
 def extract_star_point(div):
     span_div = div.find_element(By.XPATH, "//div[@class='c5dn5hn atm_9s_1txwivl atm_cx_t94yts dir dir-ltr']")
     if span_div:
@@ -120,13 +130,15 @@ def extract_star_point(div):
                 print("Yıldız Sayısı:", span.get_attribute("textContent"))
                 return span.get_attribute("textContent")
     return ""
+
+
 def extract_comment_text(div):
     comment_text = div.find_element(By.XPATH, ".//span[@class='ll4r2nl atm_kd_pg2kvz_1bqn0at dir dir-ltr']").text
     print("Yorum:", comment_text)
     return comment_text
 
 
-def get_comments(driver):
+def get_comments(driver, product_id):
     try:
         element = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located(
@@ -146,7 +158,7 @@ def get_comments(driver):
                     print("Href:", a_tag.get_attribute('href'))
                     comment_url = a_tag.get_attribute("href")
                     driver.get(comment_url)
-                    return get_comment_info(driver)
+                    return get_comment_info(driver, product_id)
             else:
                 print("a etiketi bulunamadı.")
         else:
@@ -167,14 +179,30 @@ def get_url_and_location(driver):
             unique_locations.update(extract_locations(div))
         return list(unique_urls), list(unique_locations)
     return None, None
+
+
 def extract_urls(div):
     a_tags = div.find_elements(By.TAG_NAME, 'a')
     urls = [a_tag.get_attribute("href") for a_tag in a_tags]
     return urls
+
+
 def extract_locations(div):
     locations = div.find_elements(By.XPATH, ".//div[@data-testid='listing-card-title']")
     location_texts = [location.get_attribute("textContent") for location in locations]
     return location_texts
+
+
+def get_min_price_with_decimal(price_string):
+    # Fiyatları bulmak için regular expression kullanalım
+    prices = re.findall(r'\d+\.*\d*', price_string)  # Ondalık kısmı da içeren ifadeleri bulalım
+    prices = [price.replace(".", "") for price in prices]  # Nokta işaretini kaldıralım
+    prices = [int(price) for price in prices]  # Sayısal ifadeleri integer'a çevirelim
+
+    if prices:  # Eğer fiyatlar varsa
+        return min(prices)  # En küçük fiyatı döndürelim
+    else:
+        return None  # Fiyat bulunamazsa None döndürelim
 
 
 def get_product_price(driver):
@@ -185,8 +213,12 @@ def get_product_price(driver):
     )
     if element:
         text = extract_text_from_spans(element)
-        print(text)
-        return text
+        prices = [price.replace(".", "") for price in text]  # Nokta işaretini kaldıralım
+        prices = [int(price) for price in prices]  # Sayısal ifadeleri integer'a çevirelim
+        return min(prices)
+
+
+
 def extract_text_from_spans(element):
     spans = element.find_elements(By.TAG_NAME, "span")
     text_list = [span.text for span in spans]
@@ -199,14 +231,15 @@ def open_product_url(product_urls, product_category, driver):
         product_service = ProductService()
         comment_service = CommentService()
         print("urls none degil")
-        for i,product_url in enumerate(product_urls):
+        for i, product_url in enumerate(product_urls):
             driver.get(product_url)
             print("-----------------------------------------")
-            comment_list = get_comments(driver)
+            comment_list = get_comments(driver, product_id=i + 1)
             star_rating = get_star_rating(driver)
             print(driver.title)
-            product_data = Product_Model(product_url=product_url,product_category=product_category,product_title=driver.title,product_price=get_product_price(driver),product_star_point=star_rating,)
+            product_data = Product_Model(product_url=product_url, product_category=product_category,
+                                         product_title=driver.title, product_price=get_product_price(driver),
+                                         product_star_point=star_rating, product_id=i + 1)
             product_service.add_product(product_data)
-            comment_service.add_comments_to_product(comment_list)
+            comment_service.add_comments_to_product(comment_list, i + 1)
             print("veri kaydedildi!")
-

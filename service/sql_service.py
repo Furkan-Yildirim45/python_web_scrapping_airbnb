@@ -1,5 +1,6 @@
 import sqlite3
 
+from model.comment_model import Comment_Model
 from model.product_model import Product_Model
 
 
@@ -33,8 +34,8 @@ class ProductService:
         products = self.cursor.fetchall()
         product_list = []
         for product in products:
-            product_instance = Product_Model(product[1], product[2], product[3], product[4], product[5])
-            product_instance.product_id = product[0]
+            # Bu kısımda Product_Model oluştururken uygun parametreleri geçmeniz gerekiyor
+            product_instance = Product_Model(product[0], product[1], product[2], product[3], product[4], product[5])
             product_list.append(product_instance)
         return product_list
 
@@ -54,54 +55,54 @@ class ProductService:
         products = self.cursor.fetchall()
         product_list = []
         for product in products:
-            product_instance = Product_Model(product[1], product[2], product[3], product[4], product[5])
-            product_instance.product_id = product[0]
+            # Eksik olan product_category ve product_star_point'u da ekledim
+            product_instance = Product_Model(product[0], product[1], product[2], product[3], product[4], product[5])
             product_list.append(product_instance)
         return product_list
 
     def get_products_by_price_range(self, min_price, max_price):
-        self.cursor.execute(
-            f"SELECT * FROM {self.table_name} WHERE CAST(SUBSTR(product_price, 1, INSTR(product_price, ' ') - 1) AS "
-            f"REAL) BETWEEN ? AND ?",
-            (min_price, max_price))
+        query = """SELECT * FROM Products WHERE product_price BETWEEN ? AND ?"""
+        self.cursor.execute(query, (min_price, max_price))
         products = self.cursor.fetchall()
         product_list = []
         for product in products:
-            product_instance = Product_Model(product[1], product[2], product[3], product[4], product[5])
-            product_instance.product_id = product[0]
+            product_instance = Product_Model(*product)  # Tüm sütunları kullanarak Product_Model oluştur
             product_list.append(product_instance)
         return product_list
 
     def get_products_cheaper_than(self, price):
         self.cursor.execute(
-            f"SELECT * FROM {self.table_name} WHERE CAST(SUBSTR(product_price, 1, INSTR(product_price, ' ') - 1) AS "
-            f"REAL) < ?",
+            f"SELECT * FROM {self.table_name} WHERE product_price < ?",
             (price,))
         products = self.cursor.fetchall()
         product_list = []
         for product in products:
-            product_instance = Product_Model(product[1], product[2], product[3], product[4], product[5])
-            product_instance.product_id = product[0]
+            product_instance = Product_Model(product[0], product[1], product[2], product[3], product[4], product[5])
             product_list.append(product_instance)
         return product_list
 
     def get_products_pricier_than(self, price):
         self.cursor.execute(
-            f"SELECT * FROM {self.table_name} WHERE CAST(SUBSTR(product_price, 1, INSTR(product_price, ' ') - 1) AS "
-            f"REAL) > ?",
+            f"SELECT * FROM {self.table_name} WHERE product_price > ?",
             (price,))
         products = self.cursor.fetchall()
         product_list = []
         for product in products:
-            product_instance = Product_Model(product[1], product[2], product[3], product[4], product[5])
-            product_instance.product_id = product[0]
+            product_instance = Product_Model(product[0], product[1], product[2], product[3], product[4], product[5])
             product_list.append(product_instance)
         return product_list
 
     def get_product(self, product_id):
         self.cursor.execute(f"SELECT * FROM {self.table_name} WHERE product_id = ?", (product_id,))
-        product = self.cursor.fetchone()
-        return product
+        product_data = self.cursor.fetchone()
+
+        if product_data:
+            # Tuple'dan Product_Model'e dönüşüm, her bir veriyi ayrı olarak geçiyoruz
+            product = Product_Model(product_data[0], product_data[1], product_data[2], product_data[3], product_data[4],
+                                    product_data[5])
+            return product
+        else:
+            return None  # Ürün bulunamadıysa None döndür
 
     def add_product(self, product):
         self.cursor.execute(
@@ -169,12 +170,18 @@ class CommentService:
 
     def get_comments_for_product(self, product_id):
         self.cursor.execute(f"SELECT * FROM {self.table_name} WHERE product_id = ?", (product_id,))
-        comments = self.cursor.fetchall()
+        comment_data = self.cursor.fetchall()
+
+        comments = []
+        for comment_tuple in comment_data:
+            comment = Comment_Model(*comment_tuple)  # Tuple'ı Comment_Model'e dönüştür
+            comments.append(comment)
+
         return comments
 
     def get_product_ids_with_comments(self):
-        self.cursor.execute(f"SELECT DISTINCT product_id FROM {self.table_name} WHERE comment_text != 'Henüz "
-                            f"değerlendirme mevcut değil.'")
+        self.cursor.execute(
+            f"SELECT DISTINCT product_id FROM {self.table_name} WHERE comment_text != 'Henüz değerlendirme mevcut değil.'")
         product_ids = self.cursor.fetchall()
         return [product_id[0] for product_id in product_ids]
 
@@ -192,11 +199,18 @@ class CommentService:
         self.cursor.execute(f"DELETE FROM {self.table_name} WHERE comment_id = ?", (comment_id,))
         self.conn.commit()
 
-    def add_comments_to_product(self, comments_list):
+    def add_comments_to_product(self, comments_list,product_id):
         query = f"INSERT INTO {self.table_name} (product_id, name, comment_point, comment_text) VALUES (?, ?, ?, ?)"
-        for comment in comments_list:
-            self.cursor.execute(query, (comment.product_id, comment.name, comment.comment_point, comment.comment_text))
-        self.conn.commit()
+        if comments_list is not None:
+            for comment in comments_list:
+                self.cursor.execute(query,
+                                    (comment.product_id, comment.name, comment.comment_point, comment.comment_text))
+            self.conn.commit()
+        else:
+            # Eğer comments_list None ise, "Henüz değerlendirme mevcut değil." yorumunu kaydet
+            default_comment = "Henüz değerlendirme mevcut değil."
+            self.cursor.execute(query, (product_id, None, None, default_comment))
+            self.conn.commit()
 
     def delete_all_comments_for_product(self, product_id):
         self.cursor.execute(f"DELETE FROM {self.table_name} WHERE product_id = ?", (product_id,))
@@ -208,3 +222,9 @@ class CommentService:
 
     def __del__(self):
         self.conn.close()
+
+
+#todo:modeli güncelledim bu yuzden tüm servis baştan ufak değişicek ondan sonra bu hepsini test etmeye ui devam edicem!
+#chat gpt ile hızlıca değiştir yarın!
+#6 da sorun var
+#7 de ve 8 de de sorun olucak
