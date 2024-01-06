@@ -1,81 +1,123 @@
-import requests
-from bs4 import BeautifulSoup
+import os
+import sqlite3
+
 from selenium import webdriver
-from selenium.common import NoSuchElementException
-from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.support.wait import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-
-def select_category(driver, selected_category):
-    div_for_label = driver.find_element(By.XPATH, "//div[@id='categoryScroller']")
-    scroll_button = div_for_label.find_element(By.XPATH, "//button[@data-shared-element-id='next-button']")
-
-    if div_for_label:
-        categories = div_for_label.text.split("\n")
-        print(categories)
-        for category in categories:
-            if category == selected_category:
-                print(f"Kategori bulundu: {selected_category}")
-                while True:
-                    category_button = WebDriverWait(driver, 100).until(
-                        EC.visibility_of_element_located(
-                            (By.XPATH, "//div[@id='categoryScroller']//span[contains(text(), '{}')]".format(category)))
-                    )
-                    if category_button:
-                        print("category button bulundu")
-                        if category_button.text == category:
-                            print("Üçgen evler kategorisi bulundu")
-                            driver.execute_script("arguments[0].click();", category_button)
-                            print("{} kategorisine tıklandı".format(category_button.text))
-                            break
-                        else:
-                            print("Şu anki kategori 'Üçgen evler' değil, devam ediliyor...")
-                            scroll_button.click()
-                            print("Scroll butonuna tıklandı")
-                    else:
-                        print("category button bulunamadı")
-                        scroll_button.click()
-                        print("Scroll butonuna tıklandı")
-
-def setNewUrl(driver):
-    a_tags = driver.find_elements(By.TAG_NAME, 'a')
-    a_elements = []
-    for a_tag in a_tags:
-        href_value = a_tag.get_attribute('href')
-        a_elements.append(href_value)
-    return a_elements[0]
+from product.product_operations import find_whole_product, open_product_url, get_url_and_location
+from product.project_urls import Project_Url
+from service.sql_service import ProductService, CommentService
 
 
-def get_a_element(url):
-    driver.get(url)
-    dives = driver.find_elements(By.XPATH, "//div[@aria-live='polite']")
-    if dives:
-        unique_links = set()  # Set oluştur
-        for div in dives:
-            a_tags = div.find_elements(By.TAG_NAME, 'a')
-            if a_tags:
-                print("a element bulundu")
-                for a_tag in a_tags:
-                    href_value = a_tag.get_attribute('href')
-                    if href_value:
-                        print(href_value)
+def _terminal_UI():
+    global product, product_id
+    # burdan itibaren veritabanıyla birşeyler yapabilmeyi eklicem!
+    product_service = ProductService()
+    comment_service = CommentService()
+    while True:
+        print("1 :Tüm ürünleri getir.")
+        print("2 :Sadece yorumları olan ürünleri getir.")
+        print("3 :Id si şu olan ürünü getir.")
+        print("4 :Id si şu olan ürünün yorumlarını getir.")
+        print("5 :Lokasyonu şu olan ürünleri getir.")
+        print("6 :ürün fiyatı şu aralıktakileri getir.")
+        print("7 :ürün şundan ucuz aralıktakini getir.")
+        print("8 :ürün şundan pahalı aralıktakini getir.")
+        print("9 :tüm ürünleri sil.")
+        print("q/Q :Çıkmak için kullanıcağınız seçenektir.")
+        user_input = (input("Lütfen bir seçenek seçiniz."))
+
+        if user_input == '1':
+            products = product_service.get_products()
+            for product in products:
+                print(f"ID: {product.product_id} - Title: {product.product_title}")
+        elif user_input == '2':
+            products_with_comments = product_service.get_products_with_comments()
+            for product in products_with_comments:
+                print(f"ID: {product.product_id} - Title: {product.product_title}")
+        elif user_input == '3':
+            product_id = int(input("ID'si girilecek ürünün ID'sini girin: "))
+            product = product_service.get_product(product_id)
+            print(f"ID: {product.product_id} - Title: {product.product_title}")
+        elif user_input == '4':
+            product_id = int(input("Yorumları getirilecek ürünün ID'sini girin: "))
+            comments = comment_service.get_comments_for_product(product_id)
+            for comment in comments:
+                print(f"ID: {product_id} - Text: {comment.comment_text}")
+        elif user_input == '5':
+            location = input("Lokasyonu girin: ")
+            products_by_location = product_service.get_products_by_location(location)
+            for product in products_by_location:
+                print(f"ID: {product.product_id} - Title: {product.product_title}")
+        elif user_input == '6':
+            min_price = float(input("Minimum fiyatı girin: "))
+            max_price = float(input("Maksimum fiyatı girin: "))
+            products_by_price_range = product_service.get_products_by_price_range(min_price, max_price)
+            for product in products_by_price_range:
+                print(f"ID: {product.product_id} - Title: {product.product_title} - Price: {product.product_price}")
+            print("(en sağdaki fiyatlar indirimli fiyatlardır!)")
+
+        elif user_input == '7':
+            price = float(input("Bir fiyat belirleyin: "))
+            products_cheaper_than = product_service.get_products_cheaper_than(price)
+            for product in products_cheaper_than:
+                print(f"ID: {product.product_id} - Title: {product.product_title} - Price: {product.product_price}")
+        elif user_input == '8':
+            price = float(input("Bir fiyat belirleyin: "))
+            products_pricier_than = product_service.get_products_pricier_than(price)
+            for product in products_pricier_than:
+                print(f"ID: {product.product_id} - Title: {product.product_title} - Price: {product.product_price}")
+        elif user_input == '9':
+            product_service.delete_all_products()
+        elif user_input == '10':
+            product_id = int(input("Yorumları silinecek ürünün ID'sini girin: "))
+            comment_service.delete_all_comments_for_product(product_id)
+            print(f"ID'si {product_id} olan ürüne ait tüm yorumlar silindi.")
+        elif user_input == '11':
+            confirm = input("Tüm yorumları silmek istediğinizden emin misiniz? (E/H): ")
+            if confirm.lower() == 'e':
+                comment_service.delete_all_comments()
+                print("Tüm yorumlar silindi.")
             else:
-                print("a elementi bulunamadı.")
+                print("İşlem iptal edildi.")
+        elif user_input.lower() == 'q':
+            print("Çıkış yapılıyor...")
+            break
+        else:
+            print("Geçersiz seçenek. Lütfen tekrar deneyin.")
 
 
-if __name__ == '__main__':
-    url = "https://www.airbnb.com.tr/"
+def _main_selenium_widget():
     options = Options()
     # Selenium'un Chrome tarayıcısı üzerinden çalışması için gerekli ayarlar
     options.add_argument("--headless")  # Arka planda çalıştırma
     options.add_argument("--disable-gpu")  # GPU kullanmama
     driver = webdriver.Chrome(options=options)
-    driver.get(url)
-    category = "Üçgen evler"
-    select_category(driver=driver, selected_category=category)  # tamamıyla ayarlandı!
-    new_url = setNewUrl(driver=driver)
-    get_a_element(url=new_url) #a etiketini buluyor bazen bulamayabiliyor!
+    driver.get(Project_Url.url_project_category)
+    find_whole_product(driver)
+    urls, locations = get_url_and_location(driver)
+    urls = list(urls)
+    locations = list(locations)
+    open_product_url(product_urls=urls, product_category=Project_Url.category, driver=driver)
+    _terminal_UI()
 
 
-#a etiketini buluyorum. onu alıp içine girmek var şimdi!!!!
+if __name__ == '__main__':
+    if os.path.exists('data_base.db'):
+        conn = sqlite3.connect('data_base.db')
+        cursor = conn.cursor()
+
+        # Veritabanında tabloların varlığını kontrol etme
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        tables = cursor.fetchall()
+
+        if tables:
+            # Veriler varsa yapılacak işlemler
+            print("Veritabanında veriler mevcut!")
+            _terminal_UI()
+
+        conn.close()
+    else:
+        print("Veritabanı dosyası bulunamadı.")
+        _main_selenium_widget()
+
+
