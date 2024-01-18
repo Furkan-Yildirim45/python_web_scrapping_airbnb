@@ -139,6 +139,49 @@ class ProductService:
         else:
             print("İşlem iptal edildi.")
 
+    def get_most_reviewed_product(self):
+        # En çok yorumlanan ürünü bulma
+        query = """SELECT Products.product_id, Products.product_url, Products.product_title,
+                          Products.product_price, Products.product_category, Products.product_star_point,
+                          COUNT(ProductComments.comment_id) AS comment_count
+                   FROM Products
+                   LEFT JOIN ProductComments ON Products.product_id = ProductComments.product_id
+                   GROUP BY Products.product_id
+                   ORDER BY comment_count DESC
+                   LIMIT 1"""
+
+        self.cursor.execute(query)
+        most_reviewed_product_data = self.cursor.fetchone()
+
+        if most_reviewed_product_data:
+            # comment_count'ı alarak geri kalan parametreleri Product_Model'e geçir
+            most_reviewed_product = Product_Model(
+                most_reviewed_product_data[0],  # product_id
+                most_reviewed_product_data[1],  # product_url
+                most_reviewed_product_data[2],  # product_title
+                most_reviewed_product_data[3],  # product_price
+                most_reviewed_product_data[4],  # product_category
+                most_reviewed_product_data[5],  # product_star_point
+            )
+            return most_reviewed_product
+        else:
+            return None
+
+    def get_highest_rated_product(self):
+        # En yüksek oy alan ürünü bulma
+        query = """SELECT * FROM Products
+                   ORDER BY product_star_point DESC
+                   LIMIT 1"""
+
+        self.cursor.execute(query)
+        highest_rated_product_data = self.cursor.fetchone()
+
+        if highest_rated_product_data:
+            highest_rated_product = Product_Model(*highest_rated_product_data)
+            return highest_rated_product
+        else:
+            return None
+
     def __del__(self):
         self.conn.close()
 
@@ -222,9 +265,3 @@ class CommentService:
 
     def __del__(self):
         self.conn.close()
-
-
-#todo:modeli güncelledim bu yuzden tüm servis baştan ufak değişicek ondan sonra bu hepsini test etmeye ui devam edicem!
-#chat gpt ile hızlıca değiştir yarın!
-#6 da sorun var
-#7 de ve 8 de de sorun olucak

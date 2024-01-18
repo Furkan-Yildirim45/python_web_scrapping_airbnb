@@ -171,14 +171,12 @@ def get_comments(driver, product_id):
 def get_url_and_location(driver):
     driver.implicitly_wait(0.05)
     unique_urls = set()
-    unique_locations = set()
     divs = driver.find_elements(By.XPATH, "//div[@aria-live='polite']//div[@class=' dir dir-ltr']")
     if divs:
         for div in divs:
             unique_urls.update(extract_urls(div))
-            unique_locations.update(extract_locations(div))
-        return list(unique_urls), list(unique_locations)
-    return None, None
+        return list(unique_urls)
+    return None
 
 
 def extract_urls(div):
@@ -218,7 +216,6 @@ def get_product_price(driver):
         return min(prices)
 
 
-
 def extract_text_from_spans(element):
     spans = element.find_elements(By.TAG_NAME, "span")
     text_list = [span.text for span in spans]
@@ -231,15 +228,15 @@ def open_product_url(product_urls, product_category, driver):
         product_service = ProductService()
         comment_service = CommentService()
         print("urls none degil")
-        for i, product_url in enumerate(product_urls):
+        for i, product_url in enumerate(product_urls): #her url nin içine giriyor ve verileri alıyor
             driver.get(product_url)
             print("-----------------------------------------")
-            comment_list = get_comments(driver, product_id=i + 1)
-            star_rating = get_star_rating(driver)
+            comment_list = get_comments(driver, product_id=i + 1)  #yorumları alıyor
+            star_rating = get_star_rating(driver) #ürünün yıldız puanını alıyor
             print(driver.title)
             product_data = Product_Model(product_url=product_url, product_category=product_category,
                                          product_title=driver.title, product_price=get_product_price(driver),
-                                         product_star_point=star_rating, product_id=i + 1)
-            product_service.add_product(product_data)
-            comment_service.add_comments_to_product(comment_list, i + 1)
+                                         product_star_point=star_rating, product_id=i + 1)  #modele kaydediyorum
+            product_service.add_product(product_data)  #ürün veri tabanına ekliyorum
+            comment_service.add_comments_to_product(comment_list, i + 1) #yorumları ekliyorum
             print("veri kaydedildi!")

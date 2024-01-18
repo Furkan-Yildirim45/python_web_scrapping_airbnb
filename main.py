@@ -14,16 +14,21 @@ def _terminal_UI():
     product_service = ProductService()
     comment_service = CommentService()
     while True:
-        print("1 :Tüm ürünleri getir.")
-        print("2 :Sadece yorumları olan ürünleri getir.")
-        print("3 :Id si şu olan ürünü getir.")
-        print("4 :Id si şu olan ürünün yorumlarını getir.")
-        print("5 :Lokasyonu şu olan ürünleri getir.")
-        print("6 :ürün fiyatı şu aralıktakileri getir.")
-        print("7 :ürün şundan ucuz aralıktakini getir.")
-        print("8 :ürün şundan pahalı aralıktakini getir.")
-        print("9 :tüm ürünleri sil.")
-        print("q/Q :Çıkmak için kullanıcağınız seçenektir.")
+        print("1 : Tüm ürünleri getir.")
+        print("2 : Sadece yorumları olan ürünleri getir.")
+        print("3 : ID'si şu olan ürünü getir.")
+        print("4 : ID'si şu olan ürünün yorumlarını getir.")
+        print("5 : Lokasyonu şu olan ürünleri getir.")
+        print("6 : Ürün fiyatı şu aralıktakileri getir.")
+        print("7 : Ürün şundan ucuz aralıktakini getir.")
+        print("8 : Ürün şundan pahalı aralıktakini getir.")
+        print("9 : En çok yorumlanan ürünü getir.")
+        print("10: En yüksek oy alan ürünü getir.")
+        print("11: Tüm ürünleri sil.")
+        print("12: Yorumları silinecek ürünü belirle.")
+        print("13: Tüm yorumları sil.")
+        print("q/Q: Çıkmak için kullanılacak seçenek.")
+
         user_input = (input("Lütfen bir seçenek seçiniz."))
 
         if user_input == '1':
@@ -55,7 +60,6 @@ def _terminal_UI():
             for product in products_by_price_range:
                 print(f"ID: {product.product_id} - Title: {product.product_title} - Price: {product.product_price}")
             print("(en sağdaki fiyatlar indirimli fiyatlardır!)")
-
         elif user_input == '7':
             price = float(input("Bir fiyat belirleyin: "))
             products_cheaper_than = product_service.get_products_cheaper_than(price)
@@ -67,12 +71,25 @@ def _terminal_UI():
             for product in products_pricier_than:
                 print(f"ID: {product.product_id} - Title: {product.product_title} - Price: {product.product_price}")
         elif user_input == '9':
-            product_service.delete_all_products()
+            most_reviewed_product = product_service.get_most_reviewed_product()
+            if most_reviewed_product:
+                print(f"En çok yorumlanan ürün: {most_reviewed_product.product_title}")
+            else:
+                print("Henüz yorumlanan ürün bulunamadı.")
         elif user_input == '10':
+            highest_rated_product = product_service.get_highest_rated_product()
+            if highest_rated_product:
+                print(f"En yüksek oy alan ürün: {highest_rated_product.product_title}")
+            else:
+                print("Henüz oy alan ürün bulunamadı.")
+        elif user_input == '11':
+            product_service.delete_all_products()
+            print("Tüm ürünler silindi.")
+        elif user_input == '12':
             product_id = int(input("Yorumları silinecek ürünün ID'sini girin: "))
             comment_service.delete_all_comments_for_product(product_id)
             print(f"ID'si {product_id} olan ürüne ait tüm yorumlar silindi.")
-        elif user_input == '11':
+        elif user_input == '13':
             confirm = input("Tüm yorumları silmek istediğinizden emin misiniz? (E/H): ")
             if confirm.lower() == 'e':
                 comment_service.delete_all_comments()
@@ -94,10 +111,11 @@ def _main_selenium_widget():
     driver = webdriver.Chrome(options=options)
     driver.get(Project_Url.url_project_category)
     find_whole_product(driver)
-    urls, locations = get_url_and_location(driver)
+    urls = get_url_and_location(driver) # ürünlerin urllerini alıyor
     urls = list(urls)
-    locations = list(locations)
+    #Tüm linkleri açmak için bu fonksiyona gidiyoruz ve budan dallanıyor.
     open_product_url(product_urls=urls, product_category=Project_Url.category, driver=driver)
+    #işlem seçme konsol arayüzü kodu
     _terminal_UI()
 
 
@@ -114,7 +132,6 @@ if __name__ == '__main__':
             # Veriler varsa yapılacak işlemler
             print("Veritabanında veriler mevcut!")
             _terminal_UI()
-
         conn.close()
     else:
         print("Veritabanı dosyası bulunamadı.")
